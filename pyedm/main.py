@@ -15,4 +15,4 @@ def cli(get_tag, filename):
             click.echo("Genre: {}".format(audiofile.tag.genre))
             click.echo("BPM: {}".format(audiofile.tag.bpm))
         except IOError as e:
-            click.echo("File unable to be found" + e)
+            click.echo("File unable to be found {}".format(e))

@@ -110,4 +110,4 @@ class Song:
 
     
     def print_song_info(self):
-        click.echo("Title: {} | Artist: {} | Label: {} | Genre: {} | Released: {}".format(self.title, self.artist_list, self.labels, self.genre, self.release_date))
+        click.echo("Title: {} | Artist: {} | Label: {} | BPM: {} | Genre: {} | Released: {}".format(self.title, self.artist_list, self.labels, self.bpm, self.genre, self.release_date))

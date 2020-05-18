@@ -6,7 +6,7 @@ setup(
     py_modules=['pyedm.main'],
     install_requires=[
         'Click',
-        'eyed3'
+        'mutagen'
     ],
     entry_points='''
         [console_scripts]

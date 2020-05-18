@@ -1,4 +1,5 @@
-import eyed3
+from mutagen.easyid3 import EasyID3
+from mutagen import MutagenError
 import os 
 import click
 from requests_html import HTMLSession
@@ -11,18 +12,26 @@ import webbrowser
 def cli(show_tags, get_tags, filename):
     if show_tags:
         try:
-            audiofile = eyed3.load(filename)
-            click.echo("Title: {}".format(audiofile.tag.title))
-            click.echo("Artist: {}".format(audiofile.tag.artist))
-            click.echo("Album: {}".format(audiofile.tag.album))
-            click.echo("Genre: {}".format(audiofile.tag.genre))
-            click.echo("BPM: {}".format(audiofile.tag.bpm))
+            audiofile = EasyID3(filename)
+            if "title" in audiofile:
+                click.echo("Title: {}".format(", ".join(audiofile["title"])))
+            if "artist" in audiofile:
+                click.echo("Artist: {}".format(", ".join(audiofile["artist"])))
+            if "album" in audiofile:
+                click.echo("Album: {}".format(", ".join(audiofile["album"])))
+            if "genre" in audiofile:
+                click.echo("Genre: {}".format(", ".join(audiofile["genre"])))
+            if "bpm" in audiofile:
+                click.echo("BPM: {}".format(", ".join(audiofile["bpm"])))
         except IOError as e:
             click.echo("File unable to be found {}".format(e))
     elif get_tags:
-        get_song_webpage(filename.split(".mp3")[0])
+        audiofile = EasyID3(filename)
+        # get_song_webpage(filename.split(".mp3")[0])
+        get_song_webpage("{} {}".format(", ".join(audiofile["title"]), ", ".join(audiofile["artist"])), filename)
 
-def get_song_webpage(song_info):
+def get_song_webpage(song_info, filename):
+    print(song_info)
     session = HTMLSession()
     r = session.get('https://www.beatport.com/search/tracks?q={}&per-page=25'.format(song_info.replace(" ", "%20")))
     search_results = r.html.find('.bucket-item')
@@ -68,6 +77,7 @@ def get_song_webpage(song_info):
     if click.confirm('Do you want to tag the file?'):
         song_to_tag = get_song_info(results_map[song_choice])
         song_to_tag.print_song_info()
+        tag_song(song_to_tag, filename)
 
 def get_song_info(song):
     session = HTMLSession()
@@ -91,10 +101,20 @@ def get_song_info(song):
     song_to_tag.labels = labels
     song_to_tag.genre = genre
     song_to_tag.release_date = released_date
-    song_to_tag.bpm = bpm
+    song_to_tag.bpm = int(bpm)
     song_to_tag.length = length
 
     return song_to_tag
+
+def tag_song(song_to_tag, song_file_path):
+    audiofile = EasyID3(song_file_path)
+    
+    audiofile["title"] = [song_to_tag.title]
+    audiofile["artist"] = song_to_tag.artist_list
+    audiofile["genre"] = [song_to_tag.genre]
+    audiofile["bpm"] = [song_to_tag.bpm]
+    
+    audiofile.save()
 
 class Song:
     def __init__(self, title, artist_list, url):
@@ -106,8 +126,6 @@ class Song:
         self.url = url
         self.length = ""
         self.bpm = ""
-    
-
     
     def print_song_info(self):
         click.echo("Title: {} | Artist: {} | Label: {} | BPM: {} | Genre: {} | Released: {}".format(self.title, self.artist_list, self.labels, self.bpm, self.genre, self.release_date))

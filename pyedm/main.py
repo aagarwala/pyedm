@@ -1,5 +1,5 @@
 from mutagen.easyid3 import EasyID3
-from mutagen.id3 import ID3Tags
+from mutagen.id3 import ID3
 from mutagen import MutagenError
 import os 
 import click
@@ -13,22 +13,12 @@ import webbrowser
 def cli(show_tags, get_tags, filename):
     if show_tags:
         try:
-            audiofile = EasyID3(filename)
-            if "title" in audiofile:
-                click.echo("Title: {}".format(", ".join(audiofile["title"])))
-            if "artist" in audiofile:
-                click.echo("Artist: {}".format(", ".join(audiofile["artist"])))
-            if "album" in audiofile:
-                click.echo("Album: {}".format(", ".join(audiofile["album"])))
-            if "genre" in audiofile:
-                click.echo("Genre: {}".format(", ".join(audiofile["genre"])))
-            if "bpm" in audiofile:
-                click.echo("BPM: {}".format(", ".join(audiofile["bpm"])))
+            audiofile = ID3(filename)
+            print(audiofile.pprint())
         except IOError as e:
             click.echo("File unable to be found {}".format(e))
     elif get_tags:
         audiofile = EasyID3(filename)
-        # get_song_webpage(filename.split(".mp3")[0])
         get_song_webpage("{} {}".format(", ".join(audiofile["title"]), ", ".join(audiofile["artist"])), filename)
 
 def get_song_webpage(song_info, filename):
@@ -116,14 +106,14 @@ def get_song_info(song):
 
 def tag_song(song_to_tag, song_file_path):
     audiofile = EasyID3(song_file_path)
-    EasyID3.RegisterTextKey("grouping", "TIT1")
-    
-    audiofile["title"] = [song_to_tag.title]
+    EasyID3.RegisterTextKey("contentgroupdescription", "GRP1")
+
+    audiofile["title"] = song_to_tag.title
     audiofile["artist"] = song_to_tag.artist_list
     audiofile["genre"] = [song_to_tag.genre]
     audiofile["bpm"] = [song_to_tag.bpm]
     audiofile["album"] = [song_to_tag.album_name]
-    audiofile["grouping"] = [song_to_tag.labels]
+    audiofile["contentgroupdescription"] = [song_to_tag.labels]
 
     click.clear()
     click.echo("New song data:\n")

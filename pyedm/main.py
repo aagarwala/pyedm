@@ -6,8 +6,8 @@ from requests_html import HTMLSession
 import webbrowser
 
 @click.command()
-@click.option("--show-tags", is_flag=True, help="get tag of a song")
-@click.option("--get-tags", is_flag=True, help="get tag of a song")
+@click.option("--show-tags", is_flag=True, help="get tags of a song")
+@click.option("--get-tags", is_flag=True, help="set tags of a song")
 @click.argument("filename")
 def cli(show_tags, get_tags, filename):
     if show_tags:
@@ -76,7 +76,7 @@ def get_song_webpage(song_info, filename):
 
     if click.confirm('Do you want to tag the file?'):
         song_to_tag = get_song_info(results_map[song_choice])
-        song_to_tag.print_song_info()
+        #song_to_tag.print_song_info()
         tag_song(song_to_tag, filename)
 
 def get_song_info(song):
@@ -96,6 +96,12 @@ def get_song_info(song):
         labels_list.append(l.text)
 
     labels = ", ".join(labels_list)
+
+    # if theres an ablum
+    album_url = list(r.html.find('.interior-track-releases', first=True).find('.interior-track-release-artwork-link',first=True).absolute_links)[0]
+    album_page = session.get(album_url)
+    album_page_info = album_page.html.find('.interior-release-chart-content', first=True)
+    album_name = album_page_info.find('h1', first=True).text
     
     song_to_tag = Song(song.title, song.artist_list, song.url)
     song_to_tag.labels = labels
@@ -103,6 +109,7 @@ def get_song_info(song):
     song_to_tag.release_date = released_date
     song_to_tag.bpm = int(bpm)
     song_to_tag.length = length
+    song_to_tag.album_name = album_name
 
     return song_to_tag
 
@@ -113,7 +120,10 @@ def tag_song(song_to_tag, song_file_path):
     audiofile["artist"] = song_to_tag.artist_list
     audiofile["genre"] = [song_to_tag.genre]
     audiofile["bpm"] = [song_to_tag.bpm]
-    
+    audiofile["album"] = [song_to_tag.album_name]
+
+    click.echo("Saving song..")
+    print(audiofile.pprint())
     audiofile.save()
 
 class Song:
@@ -126,6 +136,7 @@ class Song:
         self.url = url
         self.length = ""
         self.bpm = ""
+        self.album_name = ""
     
     def print_song_info(self):
-        click.echo("Title: {} | Artist: {} | Label: {} | BPM: {} | Genre: {} | Released: {}".format(self.title, self.artist_list, self.labels, self.bpm, self.genre, self.release_date))
+        click.echo("Title: {} | Artist: {} | Label: {} | BPM: {} | Genre: {} | Released: {} | Album: {}".format(self.title, self.artist_list, self.labels, self.bpm, self.genre, self.release_date, self.album_name))

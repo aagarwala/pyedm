@@ -1,4 +1,5 @@
 from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3Tags
 from mutagen import MutagenError
 import os 
 import click
@@ -115,15 +116,18 @@ def get_song_info(song):
 
 def tag_song(song_to_tag, song_file_path):
     audiofile = EasyID3(song_file_path)
+    EasyID3.RegisterTextKey("grouping", "TIT1")
     
     audiofile["title"] = [song_to_tag.title]
     audiofile["artist"] = song_to_tag.artist_list
     audiofile["genre"] = [song_to_tag.genre]
     audiofile["bpm"] = [song_to_tag.bpm]
     audiofile["album"] = [song_to_tag.album_name]
+    audiofile["grouping"] = [song_to_tag.labels]
 
-    click.echo("Saving song..")
-    print(audiofile.pprint())
+    click.clear()
+    click.echo("New song data:\n")
+    click.echo(audiofile.pprint())
     audiofile.save()
 
 class Song:

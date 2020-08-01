@@ -12,24 +12,35 @@ import requests
 
 SKIP_FOLDER = ["Music", "iTunes", "AAnster"]
 
+lookback_description = """amount of days to cover tagging from current time. pyedm looks back exactly that many days (at most),
+and stops if it goes past that number or if it reaches MAX_SONGS, whichever comes first. Default is 1 day"""
+
 @click.command()
 @click.option("--show-tags", is_flag=True, help="get tags of a song")
-@click.option("--get-tags", is_flag=True, help="set tags of a song")
-# @click.argument("filename")
+# @click.option("--get-tags", is_flag=True, help="get tags from beatport so you can set them")
+@click.option("-L", "--lookback", default=1, type=int, help=lookback_description)
+@click.option("-N", "--no_confirmation", is_flag=True, help="if this option is set, then there is no confirmation on tagging a song")
 @click.argument("max_songs")
-@click.argument("lookback", required=False)
 @click.argument("music_library_path", envvar='PYEDM_LIB_PATH')
-def cli(show_tags, get_tags, max_songs, music_library_path, lookback):
+def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
     """
-    Arguments documentation:
+    \\\\ Introduction \\\\
 
-    - MAX_SONGS (required) is the maximum number of songs you want to tag.
+        This is a handy tool for quickly tagging all your recent downloaded tracks from beatport
 
-    - MUSIC_LIBRARY_PATH (required) is to be defined by the user in command or set as env PYEDM_LIB_PATH
+    \\\\ Arguments documentation \\\\
 
-    - LOOKBACK (optional) is the amount of days to cover tagging from current time. pyedm looks back exactly that many days (at most),
-    and stops if it goes past that number or if it reaches MAX_SONGS, whichever comes first. Default is 1 day
+        MAX_SONGS: The maximum number of songs you want to tag
+
+        MUSIC_LIBRARY_PATH: The top level location of your music folder. To be defined by the user in command line or set as env PYEDM_LIB_PATH
     """
+
+    def pretty_time(epoch_time):
+        """
+        small little function that returns a readable date/time string
+        """
+
+        return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epoch_time))
 
     # print(filename)
     # If there is no lookback set to default of 1 day
@@ -37,6 +48,7 @@ def cli(show_tags, get_tags, max_songs, music_library_path, lookback):
         lookback = 1
     else:
         lookback = int(lookback)
+        print("lookback: {}".format(str(lookback)))
     # In order to get the proper lookback in epoch we need to calculate from current time to however many days back
     today = time.time()
     orig = datetime.datetime.fromtimestamp(today)
@@ -44,7 +56,7 @@ def cli(show_tags, get_tags, max_songs, music_library_path, lookback):
     lookback = orig - datetime.timedelta(days=lookback)
     lookback = lookback.timestamp()
     click.echo()
-    click.echo("lookback: {}".format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(lookback))))
+    click.echo("lookback: {} to {}".format(pretty_time(today), pretty_time(lookback)))
     click.echo("music_library_path: {}".format(music_library_path))
     click.echo("max_songs: {}".format(max_songs))
     click.echo()
@@ -58,7 +70,7 @@ def cli(show_tags, get_tags, max_songs, music_library_path, lookback):
             print(audiofile.pprint())
         except IOError as e:
             click.echo("File unable to be found {}".format(e))
-    elif get_tags:
+    else:
         # for file in filename:
         # audiofile = EasyID3(file)
         #
@@ -70,7 +82,7 @@ def cli(show_tags, get_tags, max_songs, music_library_path, lookback):
         list_of_tracks = []
         # import pdb
         # pdb.set_trace()
-        list_of_tracks, throwaway = search_latest(music_library_path, max_songs, lookback, list_of_tracks)
+        list_of_tracks, _ = search_latest(music_library_path, max_songs, lookback, list_of_tracks)
         total_tracks = "\n".join(list_of_tracks)
         click.echo("List of {} tracks to be tagged:".format(len(list_of_tracks)))
         click.echo(total_tracks)
@@ -83,7 +95,7 @@ def cli(show_tags, get_tags, max_songs, music_library_path, lookback):
                 # print(audiofile)
                 click.echo()
                 click.echo(">>> {} - {} <<<".format(match.group(1), match.group(2)))
-                get_song_webpage(", ".join(audiofile["title"]), ", ".join(audiofile["artist"]), track)
+                get_song_webpage(", ".join(audiofile["title"]), ", ".join(audiofile["artist"]), track, no_confirmation)
 
 def search_latest(music_library_path, max_songs, lookback, list_of_tracks):
     """
@@ -110,7 +122,7 @@ def search_latest(music_library_path, max_songs, lookback, list_of_tracks):
     return list_of_tracks, False
 
 
-def get_song_webpage(song_title, song_artist, filename):
+def get_song_webpage(song_title, song_artist, filename, no_confirmation):
     song_choice = None
     # Put together title and artist for search
     song_info = "{} {}".format(song_title, song_artist)
@@ -127,6 +139,8 @@ def get_song_webpage(song_title, song_artist, filename):
     match = re.search(r"(.*)\s(feat\.|ft\.)", song_artist)
     if match:
         song_artist = match.group(1)
+
+    song_artist = song_artist.split(",")
     
     # print(song_info)
     # print(song_title)
@@ -175,8 +189,19 @@ def get_song_webpage(song_title, song_artist, filename):
             # import pdb
             # pdb.set_trace()
 
+            def artist_match(song_artist, artist_list):
+                """
+                quick function to check if any of the artist (if multiple) match with the search result
+                """
+
+                for artist in song_artist:
+                    if artist.lower() in (x.lower() for x in artist_list):
+                        return True
+
+                return False
+
             # Check to see if song exact match, if so then break from results and automatically choose number
-            if song_title.lower() == stripped_full_title.lower() and song_artist.lower() in (x.lower() for x in artist_list):
+            if song_title.lower() == stripped_full_title.lower() and artist_match(song_artist, artist_list):
                 print("*** Song automatically chosen ***")
                 song_choice = i
                 click.echo()
@@ -189,13 +214,14 @@ def get_song_webpage(song_title, song_artist, filename):
     # pdb.set_trace()
     if song_choice is None:
         click.echo()
-        song_choice = click.prompt("Please enter the song number that looks correct or enter -1 to skip", type=int)
+        song_choice = click.prompt("Please enter the song number that looks correct or enter 's' to skip")
         click.echo()
 
-    if song_choice == -1:
+    if song_choice == 's':
         click.echo("Skipping this song")
         return
 
+    song_choice = int(song_choice)
     if song_choice not in results_map:
         click.echo("Sorry that's not a choice")
         return
@@ -205,7 +231,13 @@ def get_song_webpage(song_title, song_artist, filename):
     # if click.confirm('Open webpage first?'):
     #     webbrowser.open(results_map[song_choice].url)
 
-    if click.confirm('Do you want to tag the file?'):
+    # Only ask about tagging file if no_confirmation is not set (default behavior)
+    if not no_confirmation:
+        if click.confirm('Do you want to tag the file?'):
+            song_to_tag = get_song_info(results_map[song_choice])
+            #song_to_tag.print_song_info()
+            tag_song(song_to_tag, filename)
+    else:
         song_to_tag = get_song_info(results_map[song_choice])
         #song_to_tag.print_song_info()
         tag_song(song_to_tag, filename)

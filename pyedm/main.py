@@ -16,8 +16,6 @@ lookback_description = """amount of days to cover tagging from current time. pye
 and stops if it goes past that number or if it reaches MAX_SONGS, whichever comes first. Default is 1 day"""
 
 @click.command()
-# @click.option("--show-tags", is_flag=True, help="get tags of a song")
-# @click.option("--get-tags", is_flag=True, help="get tags from beatport so you can set them")
 @click.option("-L", "--lookback", default=1, type=int, help=lookback_description)
 @click.option("-N", "--no_confirmation", is_flag=True, help="if this option is set, then there is no confirmation on tagging a song")
 @click.argument("max_songs")
@@ -42,7 +40,6 @@ def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
 
         return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epoch_time))
 
-    # print(filename)
     # If there is no lookback set to default of 1 day
     if not lookback:
         lookback = 1
@@ -52,7 +49,6 @@ def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
     # In order to get the proper lookback in epoch we need to calculate from current time to however many days back
     today = time.time()
     orig = datetime.datetime.fromtimestamp(today)
-    # orig = datetime.datetime.fromtimestamp(1594089329.5821078)
     lookback = orig - datetime.timedelta(days=lookback)
     lookback = lookback.timestamp()
     click.echo()
@@ -62,26 +58,7 @@ def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
     click.echo()
     max_songs = int(max_songs)
 
-    # if show_tags:
-    #     try:
-    #         # # Looking through all the possible file names (can drag and drop multiple to cmdline)
-    #         # for file in filename:
-    #         audiofile = ID3(filename)
-    #         print(audiofile.pprint())
-    #     except IOError as e:
-    #         click.echo("File unable to be found {}".format(e))
-    # else:
-        # for file in filename:
-        # audiofile = EasyID3(file)
-        #
-        # song = Song("Easy (Extended Mix)", "Autograf feat. Papa Ya", "https://www.beatport.com/track/easy-feat-papa-ya-extended-mix/13113846")
-        # song_to_tag = get_song_info(song)
-        # tag_song(song_to_tag, "/Users/Anirudh/Music/Autograf/Autograf feat. Papa Ya - Easy (Extended Mix).mp3")
-
-        # Sort the initial music folder path by date modified and make sure the key is passed the absolute path
     list_of_tracks = []
-    # import pdb
-    # pdb.set_trace()
     list_of_tracks, _ = search_latest(music_library_path, max_songs, lookback, list_of_tracks)
     total_tracks = "\n".join(list_of_tracks)
     click.echo("List of {} tracks to be tagged:".format(len(list_of_tracks)))
@@ -92,7 +69,6 @@ def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
         if match:
             audiofile['artist'] = [match.group(1)]
             audiofile['title'] = [match.group(2)]
-            # print(audiofile)
             click.echo()
             click.echo(">>> {} - {} <<<".format(match.group(1), match.group(2)))
             get_song_webpage(", ".join(audiofile["title"]), ", ".join(audiofile["artist"]), track, no_confirmation)
@@ -142,18 +118,12 @@ def get_song_webpage(song_title, song_artist, filename, no_confirmation):
 
     song_artist = song_artist.split(",")
     
-    # print(song_info)
-    # print(song_title)
-    # print(song_artist)
+
     session = HTMLSession()
-    # url = 'https://www.beatport.com/search/tracks?q={}&per-page=25'.format(song_info.replace(" ", "%20").replace("&", ""))
-    # print(url)
     r = session.get('https://www.beatport.com/search/tracks?q={}&per-page=25'.format(song_info.replace(" ", "%20").replace("&", "")))
     search_results = r.html.find('.bucket-item')
     # Sort the results by release date as to get the first release (versus re-release)
     search_results.sort(key=lambda x: x.find('.buk-track-released', first=True).text)
-    # print(search_results)
-    # print(filename)
     results_map = {}
     
     click.echo()
@@ -168,15 +138,11 @@ def get_song_webpage(song_title, song_artist, filename, no_confirmation):
             # find artists
             artists = result.find('.buk-track-artists')[0].text
             artist_list = artists.split(",")
-            # for artist in artists:
-            #     artist_list.append(artist.text)
-            # artist_list_concat = ", ".join(artist_list)
 
             label = result.find('.buk-track-labels', first=True).text
             genre = result.find('.buk-track-genre', first=True).text
             release_date = result.find('.buk-track-released', first=True).text
             url = list(result.find('.buk-track-title', first=True).absolute_links)[0]
-            # print(url)
             results_map[i] = Song(full_title, artists, url)
 
             # Get rid of any feat. artist in full title 
@@ -185,9 +151,6 @@ def get_song_webpage(song_title, song_artist, filename, no_confirmation):
                 stripped_full_title = "{} {}".format(match.group(1), match.group(3))
             else:
                 stripped_full_title = full_title
-
-            # import pdb
-            # pdb.set_trace()
 
             def artist_match(song_artist, artist_list):
                 """
@@ -210,8 +173,7 @@ def get_song_webpage(song_title, song_artist, filename, no_confirmation):
                 break
 
             click.echo("{}. Title: {} | Artist: {} | Label: {} | Genre: {} | Released: {}".format(i, full_title, artists, label, genre, release_date))
-    
-    # pdb.set_trace()
+
     if song_choice is None:
         click.echo()
         song_choice = click.prompt("Please enter the song number that looks correct or enter 's' to skip")
@@ -226,26 +188,17 @@ def get_song_webpage(song_title, song_artist, filename, no_confirmation):
         click.echo("Sorry that's not a choice")
         return
 
-    # print("Title: {} Artist: {}".format(results_map[song_choice].title, results_map[song_choice].artist_list))
-
-    # if click.confirm('Open webpage first?'):
-    #     webbrowser.open(results_map[song_choice].url)
-
     # Only ask about tagging file if no_confirmation is not set (default behavior)
     if not no_confirmation:
         if click.confirm('Do you want to tag the file?'):
             song_to_tag = get_song_info(results_map[song_choice])
-            #song_to_tag.print_song_info()
             tag_song(song_to_tag, filename)
     else:
         song_to_tag = get_song_info(results_map[song_choice])
-        #song_to_tag.print_song_info()
         tag_song(song_to_tag, filename)
 
 def get_song_info(song):
     session = HTMLSession()
-    # import pdb
-    # pdb.set_trace()
     r = session.get(song.url)
     
     info_items = r.html.find('.interior-track-content-list')[0]
@@ -276,7 +229,6 @@ def get_song_info(song):
     album_artwork = response.content
 
     # If there are mulitple songs, need to match to right one to get track number / total tracks
-    # pdb.set_trace()
     album_tracks = album_page.html.find(".bucket-items", first=True).find(".bucket-item")
     for track in album_tracks:
         # Frist need to compare full title to see which track it is
@@ -302,8 +254,6 @@ def get_song_info(song):
     return song_to_tag
 
 def tag_song(song_to_tag, song_file_path):
-    # import pdb
-    # pdb.set_trace()
     audiofile = EasyID3(song_file_path)
     EasyID3.RegisterTextKey("contentgroupdescription", "GRP1")
     EasyID3.RegisterTextKey("year", "TYER")
@@ -318,10 +268,8 @@ def tag_song(song_to_tag, song_file_path):
     audiofile["contentgroupdescription"] = [song_to_tag.labels]
 
     audiofile.save()
-    # pdb.set_trace()
     # Need to use ID3 and APIC for saving artwork
     audiofile = ID3(song_file_path)
-    # with open('img.jpg', 'rb') as albumart:
     # For artwork you need to restart iTunes (annoying I know) for it to show up
     audiofile.delall("APIC") # Delete every APIC tag (Cover art)
     audiofile.add(APIC(
@@ -332,8 +280,6 @@ def tag_song(song_to_tag, song_file_path):
                         data=song_to_tag.album_artwork
                     ))
     audiofile.save()
-    # pdb.set_trace()
-    # click.clear()
     click.echo("\nNew song data:\n")
     click.echo(audiofile.pprint())
     click.echo("\nTagged from: {}".format(song_to_tag.url))

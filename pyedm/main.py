@@ -16,7 +16,7 @@ lookback_description = """amount of days to cover tagging from current time. pye
 and stops if it goes past that number or if it reaches MAX_SONGS, whichever comes first. Default is 1 day"""
 
 @click.command()
-@click.option("--show-tags", is_flag=True, help="get tags of a song")
+# @click.option("--show-tags", is_flag=True, help="get tags of a song")
 # @click.option("--get-tags", is_flag=True, help="get tags from beatport so you can set them")
 @click.option("-L", "--lookback", default=1, type=int, help=lookback_description)
 @click.option("-N", "--no_confirmation", is_flag=True, help="if this option is set, then there is no confirmation on tagging a song")
@@ -62,15 +62,15 @@ def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
     click.echo()
     max_songs = int(max_songs)
 
-    if show_tags:
-        try:
-            # # Looking through all the possible file names (can drag and drop multiple to cmdline)
-            # for file in filename:
-            audiofile = ID3(filename)
-            print(audiofile.pprint())
-        except IOError as e:
-            click.echo("File unable to be found {}".format(e))
-    else:
+    # if show_tags:
+    #     try:
+    #         # # Looking through all the possible file names (can drag and drop multiple to cmdline)
+    #         # for file in filename:
+    #         audiofile = ID3(filename)
+    #         print(audiofile.pprint())
+    #     except IOError as e:
+    #         click.echo("File unable to be found {}".format(e))
+    # else:
         # for file in filename:
         # audiofile = EasyID3(file)
         #
@@ -79,23 +79,23 @@ def cli(show_tags, lookback, no_confirmation, max_songs, music_library_path):
         # tag_song(song_to_tag, "/Users/Anirudh/Music/Autograf/Autograf feat. Papa Ya - Easy (Extended Mix).mp3")
 
         # Sort the initial music folder path by date modified and make sure the key is passed the absolute path
-        list_of_tracks = []
-        # import pdb
-        # pdb.set_trace()
-        list_of_tracks, _ = search_latest(music_library_path, max_songs, lookback, list_of_tracks)
-        total_tracks = "\n".join(list_of_tracks)
-        click.echo("List of {} tracks to be tagged:".format(len(list_of_tracks)))
-        click.echo(total_tracks)
-        for track in list_of_tracks:
-            audiofile = {}
-            match = re.search(r"([^/]*) - (.*)\.mp3", track)
-            if match:
-                audiofile['artist'] = [match.group(1)]
-                audiofile['title'] = [match.group(2)]
-                # print(audiofile)
-                click.echo()
-                click.echo(">>> {} - {} <<<".format(match.group(1), match.group(2)))
-                get_song_webpage(", ".join(audiofile["title"]), ", ".join(audiofile["artist"]), track, no_confirmation)
+    list_of_tracks = []
+    # import pdb
+    # pdb.set_trace()
+    list_of_tracks, _ = search_latest(music_library_path, max_songs, lookback, list_of_tracks)
+    total_tracks = "\n".join(list_of_tracks)
+    click.echo("List of {} tracks to be tagged:".format(len(list_of_tracks)))
+    click.echo(total_tracks)
+    for track in list_of_tracks:
+        audiofile = {}
+        match = re.search(r"([^/]*) - (.*)\.mp3", track)
+        if match:
+            audiofile['artist'] = [match.group(1)]
+            audiofile['title'] = [match.group(2)]
+            # print(audiofile)
+            click.echo()
+            click.echo(">>> {} - {} <<<".format(match.group(1), match.group(2)))
+            get_song_webpage(", ".join(audiofile["title"]), ", ".join(audiofile["artist"]), track, no_confirmation)
 
 def search_latest(music_library_path, max_songs, lookback, list_of_tracks):
     """
